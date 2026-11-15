@@ -15,13 +15,11 @@ export class DeliveryStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
-    const frontendOac = new cf.S3OriginAccessControl(this, 'FrontendOAC', {
-      signing: cf.Signing.SIGV4_ALWAYS,
-    });
-    const imageOac = new cf.S3OriginAccessControl(this, 'ImagesOAC', {
-      signing: cf.Signing.SIGV4_ALWAYS,
-    });
-
+    // S3Origin creates its Origin Access Identity in the bucket's stack when
+    // the bucket is cross-stack. This keeps the bucket policy independent of
+    // the Distribution resource and avoids a CloudFormation dependency cycle.
+    // OAI is legacy; migrate to OAC after consolidating the bucket and
+    // distribution policy lifecycle so the distribution ARN can be scoped safely.
     const spaRewrite = new cf.Function(this, 'SpaRewrite', {
       code: cf.FunctionCode.fromInline(
         "function handler(event) { var request = event.request; var uri = request.uri; if (!uri.startsWith('/api/') && !uri.startsWith('/images/') && !uri.includes('.')) { request.uri = '/index.html'; } return request; }",
@@ -31,10 +29,7 @@ export class DeliveryStack extends cdk.Stack {
     const distribution = new cf.Distribution(this, 'Distribution', {
       defaultRootObject: 'index.html',
       defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(
-          props.frontendBucket,
-          { originAccessControl: frontendOac },
-        ),
+        origin: new origins.S3Origin(props.frontendBucket),
         viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         functionAssociations: [{
           eventType: cf.FunctionEventType.VIEWER_REQUEST,
@@ -43,10 +38,7 @@ export class DeliveryStack extends cdk.Stack {
       },
       additionalBehaviors: {
         '/images/*': {
-          origin: origins.S3BucketOrigin.withOriginAccessControl(
-            props.processedBucket,
-            { originAccessControl: imageOac },
-          ),
+          origin: new origins.S3Origin(props.processedBucket),
           viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           cachePolicy: cf.CachePolicy.CACHING_OPTIMIZED,
         },
@@ -68,6 +60,6 @@ export class DeliveryStack extends cdk.Stack {
     });
 
     // TODO: add a trusted key group and signed URL/cookie policy for private image viewers.
-    // OAC authenticates CloudFront to S3; it does not authorize individual viewers.
+    // OAI authenticates CloudFront to S3; it does not authorize individual viewers.
   }
 }
