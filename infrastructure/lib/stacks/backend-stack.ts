@@ -1,0 +1,13 @@
+import * as cdk from 'aws-cdk-lib';import {Construct} from 'constructs';import * as ec2 from 'aws-cdk-lib/aws-ec2';import * as ecs from 'aws-cdk-lib/aws-ecs';import * as ecr from 'aws-cdk-lib/aws-ecr';import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';import * as logs from 'aws-cdk-lib/aws-logs';import * as ddb from 'aws-cdk-lib/aws-dynamodb';import * as s3 from 'aws-cdk-lib/aws-s3';
+interface Props extends cdk.StackProps{photosTable:ddb.ITable;sharesTable:ddb.ITable;originalsBucket:s3.IBucket;processedBucket:s3.IBucket;cognitoIssuerUri:string}
+export class BackendStack extends cdk.Stack {public readonly loadBalancer:elbv2.ApplicationLoadBalancer;
+ constructor(scope:Construct,id:string,props:Props){super(scope,id,props);
+ const vpc=new ec2.Vpc(this,'ApiVpc',{maxAzs:2,natGateways:0,subnetConfiguration:[{name:'public',subnetType:ec2.SubnetType.PUBLIC}]});
+ // NAT is intentionally omitted to avoid baseline NAT charges; private task egress needs VPC endpoints/NAT before production.
+ const cluster=new ecs.Cluster(this,'ApiCluster',{vpc});const repo=new ecr.Repository(this,'ApiRepository',{imageScanOnPush:true,removalPolicy:cdk.RemovalPolicy.RETAIN});
+ const task=new ecs.FargateTaskDefinition(this,'ApiTask',{cpu:512,memoryLimitMiB:1024});
+ task.addContainer('ApiContainer',{image:ecs.ContainerImage.fromEcrRepository(repo,'latest'),logging:ecs.LogDrivers.awsLogs({streamPrefix:'photo-api',logRetention:logs.RetentionDays.ONE_MONTH}),environment:{AWS_REGION:cdk.Stack.of(this).region,PHOTOS_TABLE:props.photosTable.tableName,SHARES_TABLE:props.sharesTable.tableName,ORIGINALS_BUCKET:props.originalsBucket.bucketName,PROCESSED_BUCKET:props.processedBucket.bucketName,COGNITO_ISSUER_URI:props.cognitoIssuerUri}}).addPortMappings({containerPort:8080});
+ props.photosTable.grantReadWriteData(task.taskRole);props.sharesTable.grantReadWriteData(task.taskRole);props.originalsBucket.grantPut(task.taskRole,'originals/*');props.originalsBucket.grantRead(task.taskRole,'originals/*');props.processedBucket.grantRead(task.taskRole,'thumbnails/*');props.processedBucket.grantRead(task.taskRole,'medium/*');
+ this.loadBalancer=new elbv2.ApplicationLoadBalancer(this,'ApiAlb',{vpc,internetFacing:true});const listener=this.loadBalancer.addListener('HttpListener',{port:80,open:true});const service=new ecs.FargateService(this,'ApiService',{cluster,taskDefinition:task,desiredCount:0,assignPublicIp:true,vpcSubnets:{subnetType:ec2.SubnetType.PUBLIC}});listener.addTargets('ApiTargets',{port:8080,targets:[service],healthCheck:{path:'/actuator/health',healthyHttpCodes:'200'}});
+ new cdk.CfnOutput(this,'EcrRepositoryUri',{value:repo.repositoryUri});new cdk.CfnOutput(this,'ApiLoadBalancerDns',{value:this.loadBalancer.loadBalancerDnsName});}
+}

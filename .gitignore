@@ -1,0 +1,40 @@
+# Node.js
+node_modules/
+dist/
+coverage/
+.npm/
+
+# Java / Maven
+target/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# AWS CDK
+cdk.out/
+.aws-sam/
+
+# Environment and credentials
+.env
+.env.*
+!.env.example
+.aws/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# IDEs and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

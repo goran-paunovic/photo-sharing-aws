@@ -1,0 +1,11 @@
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { ConfigProvider } from 'antd';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Amplify } from 'aws-amplify';
+import App from './App';
+import './styles.css';
+const { VITE_AWS_REGION: region, VITE_COGNITO_USER_POOL_ID: userPoolId, VITE_COGNITO_USER_POOL_CLIENT_ID: userPoolClientId } = import.meta.env;
+if (region && userPoolId && userPoolClientId) Amplify.configure({Auth:{Cognito:{userPoolId,userPoolClientId,loginWith:{email:true}}}});
+const queryClient = new QueryClient();
+ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={queryClient}><ConfigProvider theme={{token:{colorPrimary:'#5965e8',borderRadius:10}}}><App/></ConfigProvider></QueryClientProvider></React.StrictMode>);

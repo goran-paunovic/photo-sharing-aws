@@ -1,0 +1,27 @@
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+spring:
+  application:
+    name: photo-sharing-api
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${COGNITO_ISSUER_URI:}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+app:
+  aws:
+    region: ${AWS_REGION:eu-central-1}
+    originals-bucket: ${ORIGINALS_BUCKET:}
+    processed-bucket: ${PROCESSED_BUCKET:}
+    photos-table: ${PHOTOS_TABLE:}
+    shares-table: ${SHARES_TABLE:}

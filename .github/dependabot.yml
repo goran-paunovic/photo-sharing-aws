@@ -1,0 +1,36 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, frontend]
+
+  - package-ecosystem: npm
+    directory: /infrastructure
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, infrastructure]
+
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, backend]
+
+  - package-ecosystem: pip
+    directory: /lambdas/thumbnail-generator
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, lambda]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, ci]
